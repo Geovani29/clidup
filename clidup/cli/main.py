@@ -326,7 +326,7 @@ def restore(
         raise typer.Exit(code=1)
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
     version: bool = typer.Option(
         False,

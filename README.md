@@ -41,7 +41,7 @@ brew install postgresql
 
 1. **Clone or download the repository:**
 ```bash
-cd C:\Users\LA VENGADORA\Desktop\projects\clidup
+https://github.com/Geovani29/clidup.git
 ```
 
 2. **Install in editable mode:**
@@ -53,6 +53,14 @@ pip install -e .
 ```bash
 clidup --help
 ```
+
+> **Note for Windows Users:**
+> If you get a "command not found" error, it means the Python Scripts folder is not in your system PATH.
+> **Alternative run method:**
+> You can always run the tool using:
+> ```bash
+> python -m clidup ...
+> ```
 
 ##  Configuration
 
@@ -163,37 +171,6 @@ clidup restore --help
 
 # Version information
 clidup --version
-```
-
-##  Project Structure
-
-```
-clidup/
-│
-├── clidup/
-│   ├── cli/
-│   │   └── main.py          # CLI entry point
-│   │
-│   ├── core/
-│   │   ├── backup.py        # Backup orchestration
-│   │   ├── restore.py       # Restore orchestration
-│   │   └── compression.py   # Compression utilities
-│   │
-│   ├── databases/
-│   │   ├── base.py          # Abstract database interface
-│   │   └── postgres.py      # PostgreSQL implementation
-│   │
-│   ├── config/
-│   │   └── loader.py        # Configuration loader
-│   │
-│   └── logging/
-│       └── logger.py        # Logging setup
-│
-├── config.yaml              # Configuration file
-├── .env                     # Environment variables (create this)
-├── .env.example             # Environment template
-├── pyproject.toml           # Project metadata
-└── README.md                # This file
 ```
 
 ##  Backup File Naming

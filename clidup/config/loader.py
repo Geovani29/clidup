@@ -8,7 +8,7 @@ import os
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 
 class ConfigLoader:
@@ -21,8 +21,13 @@ class ConfigLoader:
         Args:
             config_path: Path to config.yaml file. If None, searches in current directory.
         """
-        # Load environment variables from .env file
-        load_dotenv()
+        # Load environment variables from .env file in current directory
+        env_path = Path.cwd() / '.env'
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+        else:
+            # Try parent directories
+            load_dotenv(dotenv_path=find_dotenv())
         
         # Determine config file path
         if config_path is None:
