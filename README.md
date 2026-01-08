@@ -91,6 +91,23 @@ POSTGRES_PASSWORD=your_actual_password
 
 ##  Usage
 
+### First Time Setup
+
+Before using clidup, initialize the configuration:
+
+```bash
+clidup init
+```
+
+This will interactively ask for:
+- PostgreSQL host, port, username, password
+- Backup directory location
+
+And create:
+- `config.yaml` - Database configuration
+- `.env` - Password (never commit this!)
+- `backups/` - Directory for backups
+
 ### Backup a Database
 
 **Basic backup:**

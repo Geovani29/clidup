@@ -4,36 +4,68 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clidup"
-version = "0.1.1"
+version = "0.2.0"
 description = "Professional CLI tool for database backups and restores"
 readme = "README.md"
 requires-python = ">=3.10"
+license = {text = "MIT"}
 authors = [
-    { name = "clidup", email = "clidup@example.com" }
+    { name = "Geovani Pérez", email = "geovaniperez0029@gmail.com" }
+]
+maintainers = [
+    { name = "Geovani Pérez", email = "geovaniperez0029@gmail.com" }
+]
+keywords = [
+    "database",
+    "backup",
+    "restore",
+    "postgresql",
+    "cli",
+    "pg_dump",
+    "database-backup",
+    "database-tools"
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
     "Topic :: Database",
+    "Topic :: System :: Archiving :: Backup",
+    "Topic :: Utilities",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
 ]
 dependencies = [
-    "typer[all]>=0.9.0",
+    "typer>=0.9.0",
+    "rich>=10.11.0",
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=0.10.0",
+    "twine>=4.0.0",
 ]
 
 [project.scripts]
 clidup = "clidup.cli.main:app"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/clidup"
-Repository = "https://github.com/yourusername/clidup"
+Homepage = "https://github.com/Geovani29/clidup"
+Repository = "https://github.com/Geovani29/clidup"
+Issues = "https://github.com/Geovani29/clidup/issues"
+Documentation = "https://github.com/Geovani29/clidup#readme"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["clidup*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+clidup = ["py.typed"]
