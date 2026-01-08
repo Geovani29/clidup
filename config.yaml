@@ -1,0 +1,15 @@
+# clidup Configuration File
+# This is an example configuration. Modify values as needed.
+
+# PostgreSQL Database Configuration
+postgres:
+  host: localhost
+  port: 5432
+  username: postgres
+  database: postgres  # Default database for connection tests
+  # Password should be set via POSTGRES_PASSWORD environment variable
+
+# Backup Settings
+backup:
+  directory: ./backups  # Directory where backups will be stored
+  # Naming format: postgres_<db_name>_full_<YYYY-MM-DD>_<HH-MM>.sql

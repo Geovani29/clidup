@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clidup"
+version = "0.1.1"
+description = "Professional CLI tool for database backups and restores"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "clidup", email = "clidup@example.com" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Database",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "typer[all]>=0.9.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+clidup = "clidup.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/clidup"
+Repository = "https://github.com/yourusername/clidup"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["clidup*"]
