@@ -1,14 +1,16 @@
 """
-PostgreSQL database handler
+MySQL database handler
 
-Implements backup and restore operations using pg_dump and psql.
+Implements backup and restore operations using mysqldump and mysql.
 """
 
 import subprocess
 import shutil
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import logging
+from datetime import datetime
+import os
 
 from .base import DatabaseHandler
 
@@ -16,26 +18,26 @@ from .base import DatabaseHandler
 logger = logging.getLogger("clidup")
 
 
-class PostgresHandler(DatabaseHandler):
-    """PostgreSQL backup and restore implementation"""
+class MySQLHandler(DatabaseHandler):
+    """MySQL backup and restore implementation"""
     
     def __init__(self, config: Dict[str, Any]):
         """
-        Initialize PostgreSQL handler
+        Initialize MySQL handler
         
         Args:
-            config: PostgreSQL configuration with host, port, username, password, database
+            config: MySQL configuration with host, port, username, password, database
         """
         super().__init__(config)
-        self.host = config['host']
-        self.port = config['port']
-        self.username = config['username']
-        self.password = config['password']
-        self.default_database = config['database']
+        self.host = config.get('host', 'localhost')
+        self.port = config.get('port', 3306)
+        self.username = config.get('username', 'root')
+        self.password = config.get('password', '')
+        self.default_database = config.get('database', '')
         
     def validate_tools(self) -> bool:
         """
-        Validate that pg_dump and psql are installed and accessible
+        Validate that mysqldump and mysql are installed and accessible
         
         Returns:
             True if tools are available
@@ -43,32 +45,30 @@ class PostgresHandler(DatabaseHandler):
         Raises:
             RuntimeError: If required tools are not found
         """
-        # Check for pg_dump
-        if not shutil.which('pg_dump'):
+        # Check for mysqldump
+        if not shutil.which('mysqldump'):
             raise RuntimeError(
-                "pg_dump not found. Please install PostgreSQL client tools.\n"
-                "Download from: https://www.postgresql.org/download/"
+                "mysqldump not found. Please install MySQL client tools.\n"
+                "Download from: https://dev.mysql.com/downloads/"
             )
         
-        # Check for psql
-        if not shutil.which('psql'):
+        # Check for mysql
+        if not shutil.which('mysql'):
             raise RuntimeError(
-                "psql not found. Please install PostgreSQL client tools.\n"
-                "Download from: https://www.postgresql.org/download/"
+                "mysql client not found. Please install MySQL client tools.\n"
+                "Download from: https://dev.mysql.com/downloads/"
             )
         
-        logger.debug("PostgreSQL tools validated successfully")
+        logger.debug("MySQL tools validated successfully")
         
-        # Test connection to PostgreSQL
+        # Test connection to MySQL
         self.validate_connection()
         
         return True
     
-        return True
-    
     def validate_connection(self) -> bool:
         """
-        Validate connection to PostgreSQL server
+        Validate connection to MySQL server
         
         Returns:
             True if connection successful
@@ -76,15 +76,14 @@ class PostgresHandler(DatabaseHandler):
         Raises:
             RuntimeError: If connection fails
         """
-        logger.debug(f"Testing connection to PostgreSQL at {self.host}:{self.port}")
+        logger.debug(f"Testing connection to MySQL at {self.host}:{self.port}")
         
         cmd = [
-            'psql',
+            'mysql',
             '-h', self.host,
-            '-p', str(self.port),
-            '-U', self.username,
-            '-d', self.default_database,
-            '-c', 'SELECT 1;'
+            '-P', str(self.port),
+            '-u', self.username,
+            '-e', 'SELECT 1;'
         ]
         
         try:
@@ -93,26 +92,26 @@ class PostgresHandler(DatabaseHandler):
                 env=self._get_env(),
                 capture_output=True,
                 text=True,
-                timeout=10,  # 10 second timeout
+                timeout=10,
                 check=True
             )
-            logger.debug("PostgreSQL connection test successful")
+            logger.debug("MySQL connection test successful")
             return True
         except subprocess.TimeoutExpired:
             raise RuntimeError(
-                f"Connection timeout to PostgreSQL at {self.host}:{self.port}. "
+                f"Connection timeout to MySQL at {self.host}:{self.port}. "
                 f"Check that the server is running and network is accessible."
             )
         except subprocess.CalledProcessError as e:
             error_detail = e.stderr.strip() if e.stderr else str(e)
             raise RuntimeError(
-                f"Cannot connect to PostgreSQL at {self.host}:{self.port}. "
+                f"Cannot connect to MySQL at {self.host}:{self.port}. "
                 f"Check credentials and server status. Error: {error_detail}"
             )
-            
+
     def get_default_backup_name(self, database: str) -> str:
         """
-        Get default backup filename for PostgreSQL
+        Get default backup filename for MySQL
         
         Args:
             database: Name of database
@@ -120,25 +119,24 @@ class PostgresHandler(DatabaseHandler):
         Returns:
             Filename string
         """
-        from datetime import datetime
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        return f"postgres_{database}_full_{timestamp}.sql"
+        return f"mysql_{database}_full_{timestamp}.sql"
     
     def _get_env(self) -> Dict[str, str]:
         """
-        Get environment variables for PostgreSQL commands
+        Get environment variables for MySQL commands
         
         Returns:
-            Dictionary with PGPASSWORD set
+            Dictionary with MYSQL_PWD set
         """
-        import os
         env = os.environ.copy()
-        env['PGPASSWORD'] = self.password
+        if self.password:
+            env['MYSQL_PWD'] = self.password
         return env
     
     def _database_exists(self, database: str) -> bool:
         """
-        Check if a database exists in PostgreSQL
+        Check if a database exists in MySQL
         
         Args:
             database: Name of database to check
@@ -147,12 +145,11 @@ class PostgresHandler(DatabaseHandler):
             True if database exists, False otherwise
         """
         cmd = [
-            'psql',
+            'mysql',
             '-h', self.host,
-            '-p', str(self.port),
-            '-U', self.username,
-            '-d', self.default_database,
-            '-lqt'  # List databases in quiet mode
+            '-P', str(self.port),
+            '-u', self.username,
+            '-e', f"SHOW DATABASES LIKE '{database}';"
         ]
         
         try:
@@ -165,9 +162,11 @@ class PostgresHandler(DatabaseHandler):
                 check=True
             )
             
-            # Check if database name appears in output
-            databases = [line.split('|')[0].strip() for line in result.stdout.split('\n')]
-            return database in databases
+            # If output contains header and row, database exists
+            # Example output:
+            # Database (test_db)
+            # test_db
+            return len(result.stdout.strip().split('\n')) > 1
             
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             logger.warning(f"Could not check if database '{database}' exists")
@@ -175,45 +174,41 @@ class PostgresHandler(DatabaseHandler):
     
     def backup(self, database: str, output_file: Path) -> None:
         """
-        Perform PostgreSQL backup using pg_dump
+        Perform MySQL backup using mysqldump
         
         Args:
             database: Name of database to backup
-            output_file: Path where backup SQL file should be saved
+            output_file: Path where backup file should be saved
             
         Raises:
-            RuntimeError: If backup fails
+            RuntimeError: If backup operation fails
         """
-        logger.info(f"Starting PostgreSQL backup of database '{database}'")
+        logger.info(f"Starting MySQL backup of database '{database}'")
         
-        # Build pg_dump command
+        # Build mysqldump command
         cmd = [
-            'pg_dump',
+            'mysqldump',
             '-h', self.host,
-            '-p', str(self.port),
-            '-U', self.username,
-            '-F', 'p',  # Plain text format
-            '-f', str(output_file),
+            '-P', str(self.port),
+            '-u', self.username,
+            '--result-file', str(output_file),
             database
         ]
         
         try:
-            # Run pg_dump
+            # Run mysqldump
+            # Note: mysqldump usually doesn't output much to stdout/stderr unless there's an error
             result = subprocess.run(
                 cmd,
                 env=self._get_env(),
                 capture_output=True,
                 text=True,
-                timeout=3600,  # 1 hour timeout for large backups
+                timeout=3600,
                 check=True
             )
             
-            logger.debug(f"pg_dump completed successfully")
+            logger.debug(f"mysqldump completed successfully")
             
-            if result.stderr:
-                # pg_dump may output warnings to stderr even on success
-                logger.debug(f"pg_dump stderr: {result.stderr}")
-                
         except subprocess.CalledProcessError as e:
             error_msg = f"Backup failed: {e.stderr if e.stderr else str(e)}"
             logger.error(error_msg)
@@ -225,53 +220,50 @@ class PostgresHandler(DatabaseHandler):
     
     def restore(self, database: str, input_file: Path) -> None:
         """
-        Restore PostgreSQL database using psql
+        Restore MySQL database using mysql client
         
         Args:
             database: Name of database to restore to
-            input_file: Path to backup SQL file
+            input_file: Path to backup file
             
         Raises:
-            RuntimeError: If restore fails
+            RuntimeError: If restore operation fails
         """
-        logger.info(f"Starting PostgreSQL restore to database '{database}'")
+        logger.info(f"Starting MySQL restore to database '{database}'")
         
-        # Validate database exists
-        if not self._database_exists(database):
-            raise RuntimeError(
-                f"Database '{database}' does not exist. "
-                f"Create it first with: CREATE DATABASE {database};"
-            )
+        # Build mysql command - read from file using shell redirection logic is tricky with subprocess
+        # Standard way: mysql -u user -p dbname < file.sql
+        # With subprocess, we can open the file and pass it to stdin
         
-        # Build psql command
         cmd = [
-            'psql',
+            'mysql',
             '-h', self.host,
-            '-p', str(self.port),
-            '-U', self.username,
-            '-d', database,
-            '-f', str(input_file)
+            '-P', str(self.port),
+            '-u', self.username,
+            database
         ]
         
         try:
-            # Run psql
-            result = subprocess.run(
-                cmd,
-                env=self._get_env(),
-                capture_output=True,
-                text=True,
-                timeout=3600,  # 1 hour timeout for large restores
-                check=True
-            )
+            with open(input_file, 'r') as f:
+                result = subprocess.run(
+                    cmd,
+                    env=self._get_env(),
+                    stdin=f,
+                    capture_output=True,
+                    text=True,
+                    timeout=3600,
+                    check=True
+                )
             
-            logger.debug(f"psql completed successfully")
+            logger.debug(f"mysql restore completed successfully")
             
-            if result.stderr:
-                # psql may output notices to stderr even on success
-                logger.debug(f"psql stderr: {result.stderr}")
-                
+        except FileNotFoundError:
+             raise RuntimeError(f"Backup file not found: {input_file}")
         except subprocess.CalledProcessError as e:
             error_msg = f"Restore failed: {e.stderr if e.stderr else str(e)}"
+            # Check for "Unknown database" error
+            if "Unknown database" in error_msg:
+                 error_msg += f"\nHint: Create the database first with: CREATE DATABASE {database};"
             logger.error(error_msg)
             raise RuntimeError(error_msg)
         except Exception as e:

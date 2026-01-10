@@ -35,6 +35,32 @@ class DatabaseHandler(ABC):
         pass
     
     @abstractmethod
+    def validate_connection(self) -> bool:
+        """
+        Validate connection to the database
+        
+        Returns:
+            True if connection is successful
+            
+        Raises:
+            RuntimeError: If connection fails
+        """
+        pass
+
+    @abstractmethod
+    def get_default_backup_name(self, database: str) -> str:
+        """
+        Get default backup filename
+        
+        Args:
+            database: Name of database
+            
+        Returns:
+            Filename string
+        """
+        pass
+
+    @abstractmethod
     def backup(self, database: str, output_file: Path) -> None:
         """
         Perform backup of specified database

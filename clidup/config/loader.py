@@ -87,6 +87,49 @@ class ConfigLoader:
             'password': password
         }
     
+    
+    def get_mysql_config(self) -> Dict[str, Any]:
+        """
+        Get MySQL configuration with password from environment
+        """
+        mysql = self.config.get('mysql', {})
+        
+        password = os.getenv('MYSQL_PASSWORD') or os.getenv('MYSQL_PWD')
+        
+        return {
+            'host': mysql.get('host', 'localhost'),
+            'port': mysql.get('port', 3306),
+            'username': mysql.get('username', 'root'),
+            'database': mysql.get('database', ''),
+            'password': password or ''  # Password might be empty for local dev
+        }
+
+    def get_sqlite_config(self) -> Dict[str, Any]:
+        """
+        Get SQLite configuration
+        """
+        sqlite = self.config.get('sqlite', {})
+        return {
+            'db_path': sqlite.get('db_path', 'data.db')
+        }
+
+    def get_mongodb_config(self) -> Dict[str, Any]:
+        """
+        Get MongoDB configuration with password from environment
+        """
+        mongo = self.config.get('mongodb', {})
+        
+        password = os.getenv('MONGODB_PASSWORD')
+        
+        return {
+            'host': mongo.get('host', 'localhost'),
+            'port': mongo.get('port', 27017),
+            'username': mongo.get('username', ''),
+            'database': mongo.get('database', ''),
+            'auth_database': mongo.get('auth_database', 'admin'),
+            'password': password or ''
+        }
+
     def get_backup_directory(self) -> Path:
         """
         Get backup directory path and create if it doesn't exist

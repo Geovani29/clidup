@@ -4,22 +4,30 @@
 
 `clidup` is a command-line interface designed to simplify database backup and restore operations. Built with Python, it provides a clean, professional interface for database administrators and developers.
 
-##  Features (MVP)
-
--  **PostgreSQL Support**: Full backup and restore for PostgreSQL databases
--  **Compression**: Optional tar.gz compression for backups
--  **Local Storage**: Save backups to your local filesystem
--  **Configuration Management**: YAML configuration + environment variables
--  **Comprehensive Logging**: Rotating log files with detailed operation history
--  **User Safety**: Confirmation prompts for destructive operations
--  **Cross-Platform**: Works on Windows, Linux, and macOS
+##  Features
+ 
+ -  **Multi-Database Support**: Full backup and restore for:
+    - PostgreSQL
+    - MySQL
+    - SQLite
+    - MongoDB
+ -  **Compression**: Optional tar.gz compression for backups
+ -  **Local Storage**: Save backups to your local filesystem
+ -  **Configuration Management**: YAML configuration + environment variables
+ -  **Comprehensive Logging**: Rotating log files with detailed operation history
+ -  **User Safety**: Confirmation prompts for destructive operations
+ -  **Cross-Platform**: Works on Windows, Linux, and macOS
 
 ##  Requirements
 
 ### System Requirements
 
 - Python 3.10 or higher
-- PostgreSQL client tools (`pg_dump` and `psql`)
+- Client tools for your database:
+  - **PostgreSQL**: `pg_dump` and `psql`
+  - **MySQL**: `mysqldump` and `mysql`
+  - **MongoDB**: `mongodump` and `mongorestore` (Database Tools)
+  - **SQLite**: None required (built-in)
 
 ### Installing PostgreSQL Client Tools
 
@@ -76,6 +84,24 @@ postgres:
   username: postgres
   database: postgres
 
+# MySQL Configuration
+mysql:
+  host: localhost
+  port: 3306
+  username: root
+  database: my_app
+
+# MongoDB Configuration
+mongodb:
+  host: localhost
+  port: 27017
+  username: admin
+  auth_database: admin
+
+# SQLite Configuration (uses file path)
+sqlite:
+  db_path: ./data.db
+
 # Backup Settings
 backup:
   directory: ./backups
@@ -93,7 +119,10 @@ copy .env.example .env
 Edit `.env` and set your PostgreSQL password:
 
 ```
-POSTGRES_PASSWORD=your_actual_password
+POSTGRES_PASSWORD=your_postgres_password
+MYSQL_PASSWORD=your_mysql_password
+MONGODB_PASSWORD=your_mongo_password
+
 ```
 
 
@@ -118,14 +147,34 @@ And create:
 
 ### Backup a Database
 
-**Basic backup:**
+**PostgreSQL:**
 ```bash
 clidup backup --db postgres --db-name myapp_db
 ```
 
-**With compression:**
+**MySQL:**
 ```bash
-clidup backup --db postgres --db-name myapp_db --compress
+clidup backup --db mysql --db-name myapp_db
+```
+
+**SQLite:**
+```bash
+# Backup the file defined in config.yaml
+clidup backup --db sqlite
+```
+
+**MongoDB:**
+```bash
+# Backup all databases
+clidup backup --db mongodb
+
+# Backup specific database
+clidup backup --db mongodb --db-name myapp_db
+```
+
+**With compression (any DB):**
+```bash
+clidup backup --db mysql --db-name myapp_db --compress
 ```
 
 **Output:**
@@ -221,7 +270,6 @@ clidup backup --db postgres --db-name mydb --config /path/to/config.yaml
 This is the MVP (Minimum Viable Product) version. The following features are **not yet implemented**:
 
 -  Cloud storage (AWS S3, Azure Blob, Google Cloud Storage)
--  Multiple database types (MySQL, MongoDB, etc.)
 -  Incremental or differential backups
 -  Scheduled/automated backups
 -  Email notifications

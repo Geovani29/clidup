@@ -12,7 +12,7 @@ from typing import Optional
 from enum import Enum
 
 from ..config.loader import ConfigLoader
-from ..databases.postgres import PostgresHandler
+from ..databases.factory import DatabaseFactory
 from ..core.backup import perform_backup
 from ..core.restore import perform_restore
 from ..logging.logger import setup_logger
@@ -29,6 +29,9 @@ app = typer.Typer(
 class DatabaseType(str, Enum):
     """Supported database types"""
     postgres = "postgres"
+    mysql = "mysql"
+    sqlite = "sqlite"
+    mongodb = "mongodb"
 
 
 def extract_db_name_from_filename(filename: str) -> Optional[str]:
@@ -52,9 +55,9 @@ def extract_db_name_from_filename(filename: str) -> Optional[str]:
     # Remove common extensions
     name = filename.replace('.tar.gz', '').replace('.tar', '').replace('.sql', '')
     
-    # Pattern: postgres_<db_name>_full_<date>_<time>
-    # db_name can contain underscores, so we use non-greedy match (.+?)
-    pattern = r'^postgres_(.+?)_full_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?$'
+    # Pattern: <type>_<db_name>_<type>_<date>_<time>
+    # Supports: postgres, mysql, sqlite, mongo
+    pattern = r'^(?:postgres|mysql|sqlite|mongo)_(.+?)_(?:full|archive)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}(?:-\d{2})?$'
     match = re.match(pattern, name)
     
     if match:
@@ -163,7 +166,7 @@ def backup(
     db: DatabaseType = typer.Option(
         ...,
         "--db",
-        help="Database type (currently only 'postgres' is supported)"
+        help="Database type (postgres, mysql, sqlite, mongodb)"
     ),
     db_name: str = typer.Option(
         ...,
@@ -198,10 +201,17 @@ def backup(
         # Get database configuration
         if db == DatabaseType.postgres:
             db_config = config.get_postgres_config()
-            db_handler = PostgresHandler(db_config)
+        elif db == DatabaseType.mysql:
+            db_config = config.get_mysql_config()
+        elif db == DatabaseType.sqlite:
+            db_config = config.get_sqlite_config()
+        elif db == DatabaseType.mongodb:
+            db_config = config.get_mongodb_config()
         else:
             typer.echo(f"Error: Unsupported database type: {db}", err=True)
             raise typer.Exit(code=1)
+            
+        db_handler = DatabaseFactory.get_handler(db.value, db_config)
         
         # Get backup directory
         backup_dir = config.get_backup_directory()
@@ -238,7 +248,7 @@ def restore(
     db: DatabaseType = typer.Option(
         ...,
         "--db",
-        help="Database type (currently only 'postgres' is supported)"
+        help="Database type (postgres, mysql, sqlite, mongodb)"
     ),
     file: str = typer.Option(
         ...,
@@ -279,10 +289,17 @@ def restore(
         # Get database configuration
         if db == DatabaseType.postgres:
             db_config = config.get_postgres_config()
-            db_handler = PostgresHandler(db_config)
+        elif db == DatabaseType.mysql:
+            db_config = config.get_mysql_config()
+        elif db == DatabaseType.sqlite:
+            db_config = config.get_sqlite_config()
+        elif db == DatabaseType.mongodb:
+            db_config = config.get_mongodb_config()
         else:
             typer.echo(f"❌ Unsupported database type: {db}", err=True)
             raise typer.Exit(code=1)
+            
+        db_handler = DatabaseFactory.get_handler(db.value, db_config)
         
         # Determine database name
         if db_name is None:
@@ -296,7 +313,7 @@ def restore(
                 typer.echo(
                     "Error: Could not detect database name from filename. "
                     "Please specify --db-name explicitly.\n"
-                    "Expected format: postgres_<db_name>_full_<YYYY-MM-DD>_<HH-MM-SS>.sql",
+                    "Expected format: <type>_<db_name>_<suffix>_<YYYY-MM-DD>_<HH-MM-SS>.sql",
                     err=True
                 )
                 raise typer.Exit(code=1)
@@ -339,7 +356,10 @@ def main(
     clidup - Professional CLI tool for database backups and restores
     
     Currently supports:
-    - PostgreSQL (backup and restore)
+    - PostgreSQL
+    - MySQL
+    - SQLite
+    - MongoDB
     - Compression (tar.gz)
     - Configuration via YAML and environment variables
     """
